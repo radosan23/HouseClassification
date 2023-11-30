@@ -2,12 +2,12 @@ import os
 import requests
 import sys
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
-if __name__ == '__main__':
+
+def download_data():
     if not os.path.exists('../Data'):
         os.mkdir('../Data')
-
-    # Download data if it is unavailable.
     if 'house_class.csv' not in os.listdir('../Data'):
         sys.stderr.write("[INFO] Dataset is loading.\n")
         url = "https://www.dropbox.com/s/7vjkrlggmvr5bc1/house_class.csv?dl=1"
@@ -15,7 +15,15 @@ if __name__ == '__main__':
         open('../Data/house_class.csv', 'wb').write(r.content)
         sys.stderr.write("[INFO] Loaded.\n")
 
+
+def main():
     df = pd.read_csv('../Data/house_class.csv')
-    info = {'rows': df.shape[0], 'columns': df.shape[1], 'NaNs': df.isna().any().any(),
-            'max_rooms': df.Room.max(), 'mean_area': df.Area.mean(), 'zip_loc': df.Zip_loc.nunique()}
-    print(*info.values(), sep='\n')
+    X = df.drop('Price', axis=1)
+    y = df['Price']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=X['Zip_loc'],
+                                                        random_state=1)
+    print(X_train['Zip_loc'].value_counts().to_dict())
+
+
+if __name__ == '__main__':
+    main()
