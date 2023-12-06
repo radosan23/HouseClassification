@@ -5,7 +5,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+from category_encoders import TargetEncoder
 
 
 def download_data():
@@ -40,17 +41,28 @@ def ordinal_encode(*x_in):
     return x_out
 
 
+def target_encode(y_in, *x_in):
+    enc = TargetEncoder(cols=['Zip_area', 'Room', 'Zip_loc']).fit(x_in[0], y_in)
+    x_out = []
+    for x in x_in:
+        x_out.append(enc.transform(x))
+    return x_out
+
+
 def main():
     df = pd.read_csv('../Data/house_class.csv')
     X, y = df.drop('Price', axis=1), df['Price']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=X['Zip_loc'],
                                                         random_state=1)
-    X_train_trans, X_test_trans = ordinal_encode(X_train, X_test)
-    clf = DecisionTreeClassifier(criterion='entropy', max_features=3, splitter='best', max_depth=6,
-                                 min_samples_split=4, random_state=3).fit(X_train_trans, y_train)
-    prediction = clf.predict(X_test_trans)
-    accuracy = accuracy_score(y_test, prediction)
-    print(accuracy)
+    for name, encoder in {'OneHotEncoder': one_hot_encode(X_train, X_test),
+                          'OrdinalEncoder': ordinal_encode(X_train, X_test),
+                          'TargetEncoder': target_encode(y_train, X_train, X_test)}.items():
+        X_train_trans, X_test_trans = encoder
+        clf = DecisionTreeClassifier(criterion='entropy', max_features=3, splitter='best', max_depth=6,
+                                     min_samples_split=4, random_state=3).fit(X_train_trans, y_train)
+        prediction = clf.predict(X_test_trans)
+        report = classification_report(y_test, prediction, output_dict=True)
+        print(name, round(report['macro avg']['f1-score'], 2), sep=':')
 
 
 if __name__ == '__main__':
